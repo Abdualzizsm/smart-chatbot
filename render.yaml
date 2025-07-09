@@ -1,7 +1,8 @@
 services:
   - type: web
-    name: smart-chatbot
+    name: smart-gemini-bot
     env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
     envVars:
@@ -9,3 +10,7 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    healthCheckPath: /
+    region: oregon
