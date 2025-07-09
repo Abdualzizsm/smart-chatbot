@@ -85,30 +85,47 @@ async def conflict_resolver():
     """حل مشكلة الـ conflict من خلال حذف webhook وتنظيف التحديثات المعلقة"""
     try:
         from telegram import Bot
+        import asyncio
+        
         bot = Bot(token=BOT_TOKEN)
         
-        # حذف webhook إذا كان موجود
-        await bot.delete_webhook(drop_pending_updates=True)
-        logger.info("🔧 Webhook deleted and pending updates cleared")
+        # حذف webhook مع معالجة flood control
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("🔧 Webhook deleted and pending updates cleared")
+        except Exception as webhook_error:
+            if "flood control" in str(webhook_error).lower():
+                logger.warning("⚠️ Flood control detected, waiting...")
+                await asyncio.sleep(2)
+            else:
+                logger.warning(f"⚠️ Webhook deletion failed: {webhook_error}")
         
-        # الحصول على معلومات البوت للتأكد
-        bot_info = await bot.get_me()
-        logger.info(f"✅ Bot ready: @{bot_info.username}")
+        # فاصل زمني قصير قبل التحقق
+        await asyncio.sleep(1)
         
-        # إغلاق البوت
-        await bot.close()
+        # الحصول على معلومات البوت
+        try:
+            bot_info = await bot.get_me()
+            logger.info(f"✅ Bot ready: @{bot_info.username}")
+        except Exception as info_error:
+            logger.warning(f"⚠️ Could not get bot info: {info_error}")
+        
+        # إغلاق البوت بهدوء
+        try:
+            await bot.close()
+        except Exception as close_error:
+            logger.warning(f"⚠️ Bot close warning: {close_error}")
         
     except Exception as e:
-        logger.warning(f"⚠️ Conflict resolver warning: {e}")
+        logger.warning(f"⚠️ Conflict resolver failed: {e}")
 
-def main():
-    """تشغيل البوت"""
+async def async_main():
+    """تشغيل البوت بطريقة async"""
     logger.info("🚀 Starting Simple Smart Chatbot...")
     
     # حل مشاكل الـ conflict
-    import asyncio
     try:
-        asyncio.run(conflict_resolver())
+        await conflict_resolver()
     except Exception as resolver_error:
         logger.warning(f"⚠️ Conflict resolver failed: {resolver_error}")
     
@@ -121,7 +138,42 @@ def main():
     
     # تشغيل البوت
     logger.info("✅ Bot is running with polling!")
-    application.run_polling(drop_pending_updates=True)
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling(drop_pending_updates=True)
+    
+    # الانتظار بلا نهاية
+    import signal
+    import asyncio
+    
+    stop_event = asyncio.Event()
+    
+    def signal_handler(signum, frame):
+        logger.info("🚨 Received shutdown signal")
+        stop_event.set()
+    
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+    
+    try:
+        await stop_event.wait()
+    except KeyboardInterrupt:
+        logger.info("🚨 Keyboard interrupt received")
+    finally:
+        logger.info("🚪 Shutting down...")
+        await application.updater.stop()
+        await application.stop()
+        await application.shutdown()
+
+def main():
+    """نقطة الدخول الرئيسية"""
+    import asyncio
+    try:
+        asyncio.run(async_main())
+    except KeyboardInterrupt:
+        logger.info("🚪 Program terminated by user")
+    except Exception as e:
+        logger.error(f"❌ Fatal error: {e}")
 
 if __name__ == '__main__':
     main()
