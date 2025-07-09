@@ -78,6 +78,23 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "عذراً، حدث خطأ في المعالجة. 😔\nيرجى المحاولة مرة أخرى."
         )
 
+async def conflict_resolver():
+    """حل مشكلة الـ conflict من خلال حذف webhook وتنظيف التحديثات المعلقة"""
+    try:
+        from telegram import Bot
+        bot = Bot(token=BOT_TOKEN)
+        
+        # حذف webhook إذا كان موجود
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("🔧 Webhook deleted and pending updates cleared")
+        
+        # الحصول على معلومات البوت للتأكد
+        bot_info = await bot.get_me()
+        logger.info(f"✅ Bot ready: @{bot_info.username}")
+        
+    except Exception as e:
+        logger.warning(f"⚠️ Conflict resolver warning: {e}")
+
 def main():
     """تشغيل البوت"""
     # التحقق من وجود المفاتيح
@@ -90,6 +107,10 @@ def main():
         return
     
     logger.info("🚀 Starting Smart Chatbot...")
+    
+    # حل مشاكل الـ conflict
+    import asyncio
+    asyncio.run(conflict_resolver())
     
     # إنشاء التطبيق
     application = Application.builder().token(BOT_TOKEN).build()
