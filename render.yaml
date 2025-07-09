@@ -1,5 +1,5 @@
 services:
-  - type: web
+  - type: worker
     name: smart-gemini-bot
     env: python
     plan: free
@@ -12,5 +12,4 @@ services:
         sync: false
       - key: PYTHONUNBUFFERED
         value: "1"
-    healthCheckPath: /
     region: oregon
