@@ -2,12 +2,18 @@
 """
 بوت تليجرام - نسخة Render نهائية مُختبرة
 """
-import os
 import logging
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+import os
+import asyncio
+import nest_asyncio
+
 import google.generativeai as genai
 from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram import Bot
+
+nest_asyncio.apply()
 
 # تحميل المتغيرات
 load_dotenv()
@@ -57,21 +63,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Error: {e}")
         await update.message.reply_text("عذراً، حدث خطأ 😔")
 
+async def cleanup_updates():
+    """إنشاء بوت مؤقت لتنظيف التحديثات العالقة وإغلاق الاتصالات الشبح."""
+    logger.info("🧹 Running cleanup task...")
+    try:
+        temp_bot = Bot(token=BOT_TOKEN)
+        updates = await temp_bot.get_updates(offset=-1, timeout=5)
+        if updates:
+            last_update_id = updates[-1].update_id
+            await temp_bot.get_updates(offset=last_update_id + 1, timeout=5)
+            logger.info(f"✅ Cleanup finished. Cleared {len(updates)} pending updates.")
+        else:
+            logger.info("✅ No pending updates to clear.")
+    except Exception as e:
+        logger.error(f"Error during cleanup: {e}")
+
 def main():
     """النقطة الرئيسية"""
-    logger.info("🚀 Starting Final Render Bot...")
+    # الخطوة 1: تشغيل التنظيف أولاً
+    asyncio.run(cleanup_updates())
     
-    # إنشاء التطبيق
+    logger.info("🚀 Starting Final Render Bot after cleanup...")
+    
+    # الخطوة 2: إنشاء وتشغيل التطبيق الرئيسي
     application = Application.builder().token(BOT_TOKEN).build()
     
-    # إضافة المعالجات
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # تشغيل البوت
     logger.info("✅ Bot running with polling!")
     application.run_polling(
-        drop_pending_updates=True,
+        drop_pending_updates=True, # لا يزال مهماً كخط دفاع ثاني
         allowed_updates=['message']
     )
 
