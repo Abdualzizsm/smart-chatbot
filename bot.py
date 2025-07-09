@@ -95,6 +95,25 @@ async def conflict_resolver():
     except Exception as e:
         logger.warning(f"⚠️ Conflict resolver warning: {e}")
 
+async def async_main():
+    """تشغيل البوت بشكل غير متزامن"""
+    # حل مشاكل الـ conflict
+    await conflict_resolver()
+    
+    # إنشاء التطبيق
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    # إضافة المعالجات
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    
+    # تشغيل البوت
+    logger.info("✅ Bot is running!")
+    await application.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=['message', 'edited_message']
+    )
+
 def main():
     """تشغيل البوت"""
     # التحقق من وجود المفاتيح
@@ -108,23 +127,14 @@ def main():
     
     logger.info("🚀 Starting Smart Chatbot...")
     
-    # حل مشاكل الـ conflict
-    import asyncio
-    asyncio.run(conflict_resolver())
-    
-    # إنشاء التطبيق
-    application = Application.builder().token(BOT_TOKEN).build()
-    
-    # إضافة المعالجات
-    application.add_handler(CommandHandler("start", start_command))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
     # تشغيل البوت
-    logger.info("✅ Bot is running!")
-    application.run_polling(
-        drop_pending_updates=True,
-        allowed_updates=['message', 'edited_message']
-    )
+    import asyncio
+    try:
+        asyncio.run(async_main())
+    except KeyboardInterrupt:
+        logger.info("🛱 Bot stopped by user")
+    except Exception as e:
+        logger.error(f"❌ Error: {e}")
 
 if __name__ == '__main__':
     main()
