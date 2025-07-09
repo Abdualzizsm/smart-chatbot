@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 from telegram import Bot
+from telegram.error import Conflict
 
 nest_asyncio.apply()
 
@@ -78,10 +79,15 @@ async def cleanup_updates():
     except Exception as e:
         logger.error(f"Error during cleanup: {e}")
 
-def main():
-    """النقطة الرئيسية"""
-    # الخطوة 1: تشغيل التنظيف أولاً
-    asyncio.run(cleanup_updates())
+async def main():
+    """النقطة الرئيسية للتشغيل غير المتزامن"""
+    # الخطوة 1: محاولة تشغيل التنظيف، مع تجاهل خطأ التضارب إذا حدث
+    try:
+        await cleanup_updates()
+    except Conflict:
+        logger.warning("Cleanup task failed due to a conflict. This is normal if a ghost connection is very stubborn. Proceeding to main startup...")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred during cleanup: {e}")
     
     logger.info("🚀 Starting Final Render Bot after cleanup...")
     
@@ -91,11 +97,27 @@ def main():
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    logger.info("✅ Bot running with polling!")
-    application.run_polling(
-        drop_pending_updates=True, # لا يزال مهماً كخط دفاع ثاني
-        allowed_updates=['message']
-    )
+    logger.info("✅ Bot starting polling asynchronously!")
+    
+    # التشغيل غير المتزامن - هذا يضمن عدم إغلاق حلقة الأحداث
+    try:
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling(drop_pending_updates=True)
+        logger.info("🎉 Bot is now running!")
+        # إبقاء البرنامج يعمل إلى الأبد
+        while True:
+            await asyncio.sleep(3600)
+    except (KeyboardInterrupt, SystemExit):
+        logger.info("🛑 Bot shutting down...")
+        await application.updater.stop()
+        await application.stop()
+        logger.info("✅ Bot shutdown complete.")
 
 if __name__ == '__main__':
-    main()
+    try:
+        asyncio.run(main())
+    except RuntimeError as e:
+        logger.error(f"RuntimeError on startup: {e}")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
