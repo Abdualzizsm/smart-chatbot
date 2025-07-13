@@ -5,7 +5,7 @@ import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from flask import Flask, request
-from wsgi_adapter import WsgiToAsgi
+from a2wsgi import A2WSGI
 from dotenv import load_dotenv
 import yt_dlp
 
@@ -79,7 +79,7 @@ async def handle_youtube_link(update: Update, context: ContextTypes.DEFAULT_TYPE
 _flask_app = Flask(__name__)
 
 # The ASGI app that Gunicorn will run
-app = WsgiToAsgi(_flask_app)
+app = A2WSGI(_flask_app)
 
 @_flask_app.route("/")
 def index():
