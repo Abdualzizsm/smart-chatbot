@@ -5,6 +5,7 @@ import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from flask import Flask, request
+from wsgi_adapter import WsgiToAsgi
 from dotenv import load_dotenv
 import yt_dlp
 
@@ -74,13 +75,17 @@ async def handle_youtube_link(update: Update, context: ContextTypes.DEFAULT_TYPE
         await message.edit_text("❌ حدث خطأ أثناء معالجة الرابط. تأكد من أنه رابط يوتيوب صحيح.")
 
 # --- Flask Webhook Server ---
-app = Flask(__name__)
+# The WSGI app (Flask)
+_flask_app = Flask(__name__)
 
-@app.route('/')
+# The ASGI app that Gunicorn will run
+app = WsgiToAsgi(_flask_app)
+
+@_flask_app.route("/")
 def index():
     return "Bot is running!"
 
-@app.route(f'/{BOT_TOKEN}', methods=['POST'])
+@_flask_app.route(f"/{BOT_TOKEN}", methods=["POST"])
 async def webhook():
     update_data = request.get_json()
     update = Update.de_json(update_data, application.bot)
