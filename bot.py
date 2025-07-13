@@ -108,12 +108,17 @@ async def main():
         logger.info("WEBHOOK_URL not found, running in polling mode.")
         await application.run_polling()
 
-if __name__ == "__main__":
-    if not BOT_TOKEN:
-        raise ValueError("TELEGRAM_BOT_TOKEN is not set!")
-    
-    if WEBHOOK_URL: # Production mode on Render
-        # The server is run by Gunicorn, so we just need to initialize the bot
-        asyncio.run(main())
-    else: # Local development mode
-        asyncio.run(main())
+# --- Bot Initialization ---
+if not BOT_TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN is not set!")
+
+# In production (on Render), Gunicorn runs the app. We just need to initialize the bot.
+# The `main` function sets up the application and webhook.
+if WEBHOOK_URL:
+    asyncio.run(main())
+
+# For local development, you can run this file directly:
+if __name__ == "__main__" and not WEBHOOK_URL:
+    logger.info("Running bot in polling mode for local development.")
+    # The main() function will handle polling when WEBHOOK_URL is not set.
+    asyncio.run(main())
