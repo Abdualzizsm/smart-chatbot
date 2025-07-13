@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: smart-chatbot
+    name: youtube-downloader-bot
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
@@ -13,5 +13,5 @@ services:
       - key: WEBHOOK_URL
         fromService:
           type: web
-          name: smart-chatbot
+          name: youtube-downloader-bot
           property: url
