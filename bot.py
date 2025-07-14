@@ -84,12 +84,14 @@ if WEBHOOK_URL:  # This will be true on Render
 
     app = WSGIMiddleware(_flask_app) # The ASGI app that Gunicorn will run
 
-    async def setup_bot():
+    async def main():
+        """Initializes the bot and sets the webhook."""
+        await application.initialize() # Important: Initialize the application
         await application.bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
         logger.info(f"Webhook set to {WEBHOOK_URL}")
 
-    # Run setup_bot once when the app starts
-    asyncio.run(setup_bot())
+    # Run main once when the app starts
+    asyncio.run(main())
 
 else:
     # Local development mode with polling
