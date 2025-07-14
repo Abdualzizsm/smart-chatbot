@@ -35,7 +35,14 @@ async def handle_youtube_link(update: Update, context: ContextTypes.DEFAULT_TYPE
     url = update.message.text
     message = await update.message.reply_text("🔍 جاري تحليل الرابط، يرجى الانتظار...")
     try:
-        ydl_opts = {'quiet': True, 'no_warnings': True}
+        # Add a User-Agent to avoid YouTube blocking requests from servers
+        ydl_opts = {
+            'quiet': True, 
+            'no_warnings': True,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
+            }
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
         keyboard = []
@@ -84,13 +91,12 @@ if WEBHOOK_URL:  # This will be true on Render
 
     app = WSGIMiddleware(_flask_app) # The ASGI app that Gunicorn will run
 
+    # The following block runs ONLY when the app starts on Render.
+    # It initializes the bot and sets the webhook correctly.
     async def main():
-        """Initializes the bot and sets the webhook."""
-        await application.initialize() # Important: Initialize the application
+        await application.initialize()
         await application.bot.set_webhook(url=f"{WEBHOOK_URL}/{BOT_TOKEN}")
-        logger.info(f"Webhook set to {WEBHOOK_URL}")
 
-    # Run main once when the app starts
     asyncio.run(main())
 
 else:
