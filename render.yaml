@@ -4,10 +4,9 @@ services:
     env: python
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn --worker-class uvicorn.workers.UvicornWorker bot:app"
+    startCommand: "gunicorn --worker-class uvicorn.workers.UvicornWorker main:app"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.5
       - key: TELEGRAM_BOT_TOKEN
         sync: false # You will set this in the Render dashboard
-
