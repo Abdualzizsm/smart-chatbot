@@ -22,10 +22,16 @@ WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL")
 _flask_app = Flask(__name__)
 
 @_flask_app.route(f"/{BOT_TOKEN}", methods=["POST"])
-async def webhook():
-    """Webhook endpoint to receive updates from Telegram."""
-    update = Update.de_json(request.get_json(force=True), application.bot)
-    await application.process_update(update)
+def webhook():
+    """Webhook endpoint to process updates from Telegram."""
+    try:
+        update = Update.de_json(request.get_json(force=True), application.bot)
+        # Get the current event loop managed by Uvicorn
+        loop = asyncio.get_running_loop()
+        # Schedule the async task to run on the main loop and wait for it to finish
+        asyncio.run_coroutine_threadsafe(application.process_update(update), loop).result()
+    except Exception as e:
+        logging.error(f"Error processing update: {e}")
     return "OK", 200
 
 # The final ASGI app that Gunicorn will run
